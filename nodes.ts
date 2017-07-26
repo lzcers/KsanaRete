@@ -1,3 +1,4 @@
+import { uniqueId } from 'lodash';
 interface WME {
   identifier: string;
   attribute: string;
@@ -22,12 +23,14 @@ interface Rule {
 
 
 class ReteNode {
+  id: string;
   type: string;
-  children: Array<ReteNode>;
+  children: Array<ReteNode> = [];
   parent: ReteNode | null;
   constructor(type: string, parent: ReteNode | null) {
     this.type = type;
     this.parent = parent;
+    this.id = uniqueId();
   }
 }
 interface ReteNodeHashTable {
@@ -35,7 +38,7 @@ interface ReteNodeHashTable {
 };
 
 class RootNode extends ReteNode {
-  hashTable: {[index: string]: ReteNode} = {};
+  typeNodeHashTable: {[index: string]: ReteNode} = {};
   constructor() {
     super('RootNode', null);
   }
@@ -46,6 +49,11 @@ class AlphaNode extends ReteNode {
   constructor(parent: ReteNode, pattern: Pattern) {
     super('AlphaNode', parent);
     this.pattern = pattern;
+  }
+  patternMatch(p: Pattern) {
+    return  p.attribute == this.pattern.attribute 
+            && p.identifier == this.pattern.identifier 
+            && p.value == this.pattern.value ? true : false;
   }
 }
 
@@ -62,6 +70,7 @@ class TypeNode extends ReteNode {
     super("TypeNode", parent);
   }
 }
+
 class BetaNode extends ReteNode {
   leftActivation(w: WME) {
 

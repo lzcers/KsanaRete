@@ -21,4 +21,7 @@ let testRules: Array<Rule> = [
   }
 ]
 
-console.log(new Rete(testRules));
+const rete = new Rete(testRules);
+console.log(rete);
+rete.traverseRete();
+debugger;
