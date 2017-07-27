@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var rete_1 = require("./rete");
-var testRules = [
+const rete_1 = require("./rete");
+let testRules = [
     {
         LHS: [{ identifier: "a", attribute: "age", value: "20" }, { identifier: "a", attribute: "sex", value: "man" }],
         RHS: function () {
@@ -21,4 +21,8 @@ var testRules = [
         }
     }
 ];
-console.log(new rete_1.Rete(testRules));
+const rete = new rete_1.Rete(testRules);
+console.log(rete);
+rete.traverseRete();
+debugger;
+//# sourceMappingURL=main.js.map
