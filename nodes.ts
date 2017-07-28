@@ -90,7 +90,11 @@ class JoinNode extends ReteNode {
 }
 
 class BetaMemory extends ReteNode {
-  items: Set<Pattern> | null;
+  tokens: Set<Pattern> | null;
+  items: Array<WME>;
+  insertWME(w: WME) {
+    this.items.push(w);
+  }
   constructor() {
     super('BetaMemory', null);
   }
