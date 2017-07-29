@@ -45,18 +45,37 @@ class TypeNode extends ReteNode {
     }
 }
 exports.TypeNode = TypeNode;
-class BetaNode extends ReteNode {
+class JoinNode extends ReteNode {
+    constructor(parent) {
+        super("JoinNode", parent);
+        this.rightInput = parent;
+    }
     leftActivation(w) {
     }
     rightActivation(w) {
     }
 }
-exports.BetaNode = BetaNode;
-class BetaMemory extends ReteNode {
+exports.JoinNode = JoinNode;
+class EndNode extends ReteNode {
+    constructor(p, f) {
+        super('EndNode', p);
+        this.RHS = f;
+    }
 }
+exports.EndNode = EndNode;
+class BetaMemory extends ReteNode {
+    insertWME(w) {
+        this.items.push(w);
+    }
+    constructor(jNode, tokens) {
+        super('BetaMemory', jNode);
+        this.tokens = tokens == null ? new Set() : tokens;
+    }
+}
+exports.BetaMemory = BetaMemory;
 function alphaMemoryActivation(AM, w) {
     AM.insertWME(w);
-    AM.successors.forEach(node => {
+    AM.children.forEach((node) => {
         node.rightActivation(w);
     });
 }

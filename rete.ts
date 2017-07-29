@@ -1,4 +1,4 @@
-import { Pattern, Rule, ReteNode, RootNode, TypeNode, AlphaNode, JoinNode, AlphaMemory, BetaMemory } from './nodes';
+import { Pattern, Rule, ReteNode, RootNode, TypeNode, AlphaNode, JoinNode, AlphaMemory, BetaMemory, EndNode } from './nodes';
 
   function patternMatch(p1: Pattern, p2: Pattern) {
     return  p1.attribute == p2.attribute 
@@ -81,51 +81,73 @@ class Rete {
       })
       let betaMemoryStack: Array<BetaMemory> = [];
 
+      let maxMatchTokensNode: BetaMemory = new BetaMemory(null, null);
       // 然后开始创建Beta网络的节点
-      while (alphaMemoryStack.length != 0) {
-        // 搜索能够复用的BetaMemory
-        alphaMemoryStack.forEach(e => {
-          e.children.forEach((j: JoinNode) => {
-            // 如果该alphaMemory链接的JoinNode其左输入的tokens比当前的rulePatternSet大，就跳过了。
-            // 因为意味着，假设当前规则的模式为c1&&c2&&c3, tokens.size为3， 而匹配的leftInputNode的模式数量比当前规则多，
-            // 则该leftInputNode显然不能复用
-            if (j.children[0].type != "EndNode") {
-              const betaMemoryNode = <BetaMemory>j.children[0];
-              if (betaMemoryNode.tokens != null && betaMemoryNode.tokens.size  <= rulePatternSet.size) {
-                // 匹配
-              } else {
-
-              }
-            } else {
-              const betaMemoryNode = <BetaMemory>j.leftInput;
-              if (betaMemoryNode.tokens != null && betaMemoryNode.tokens.size  <= rulePatternSet.size) {
-                // 匹配
-              } else {
-
-              }
+      // 搜索能够复用的BetaMemory，该BetaMemory的token是 rulePatternSet的最大子集;
+      searchLoop: for (const e of alphaMemoryStack) {
+        const jNode = <Array<JoinNode>>e.children;
+        for (const j of jNode) {
+          // 如果该alphaMemory链接的JoinNode其左输入的tokens比当前的rulePatternSet大，就跳过了。
+          // 因为意味着，假设当前规则的模式为c1&&c2&&c3, tokens.size为3， 而匹配的leftInputNode的模式数量比当前规则多，
+          // 则该leftInputNode显然不能复用
+          // 进行子集检查，看是否能否复用
+          // 该BetaMemory的tokens集合大小显然不能大于当前规则的模式数；
+          const betaMemoryNode = <BetaMemory> j.leftInput;
+          // 该BetaMemory的tokens集合大小显然不能大于当前规则的模式数；
+          if (betaMemoryNode.tokens != null && betaMemoryNode.tokens.size  <= rulePatternSet.size) {
+            // 匹配
+            if (patternSubsetCheck(betaMemoryNode.tokens, rulePatternSet) && maxMatchTokensNode.tokens != null && betaMemoryNode.tokens.size > maxMatchTokensNode.tokens.size) {
+              maxMatchTokensNode = betaMemoryNode;
             }
-          })
-        })
-        // let aMemoryNode: AlphaMemory | undefined = alphaMemoryStack.shift();
-        // 当前alphaMemory为新建节点
-        // if (aMemoryNode != undefined && aMemoryNode.children.length == 0) {
-        //   let joinNode = new JoinNode(aMemoryNode);
-        //   let betaMemory = new BetaMemory();
-        //   joinNode.leftInput = betaMemory;
-        // }  else if (aMemoryNode != undefined && aMemoryNode.children.length > 0) {
-        //   // 该alphaMemoryNode非新建的，则要搜索是否存在能够部分匹配模式的节点
-        //   aMemoryNode.children.forEach((node: JoinNode) => {
-        //     // null
-        //     if (node.leftInput.items != null) {
-        //       let flag = true;
-        //       rulesPatternSet.forEach(p => {
-        //         const items = node.leftInput.items || new Set<Pattern>();
-        //         flag = items.has(p);
-        //       })
-        //     } 
-        //   })
-        // }
+          }
+          // 已经找到最大匹配的token了，不找了
+          if (maxMatchTokensNode.tokens != null && rulePatternSet.size - maxMatchTokensNode.tokens.size == 1) {
+            break searchLoop;
+          }
+        }
       }
+      // 好了， 我们拿到这个最大的匹配的betaMemory来构建join节点吧
+      // 首先我们看看这个最大匹配的betaMemory到底匹配了当前规则中的几个模式；
+      // 假设当前规则为c1&v2&c3&c4, 然后我们找到的这个betaMemory的tokens是 c1&c2&c3
+      // 那么我们就要构造一个join节点把这个betaMemory做为join节点的leftInput, c4的alphaMemory作为rightInput
+      // if (maxMatchTokensNode.tokens != null) {
+        // 找到不在这个token里面的模式，建立Join节点 
+        let nodesOfWillCreateJoinNode = [];
+        for (const e of alphaMemoryStack) {
+          const aNode =  <AlphaNode>e.parent;
+          const pattern = aNode.pattern;
+          const arrMaxTokens = [...maxMatchTokensNode.tokens || []];
+          const result = arrMaxTokens.find(p => {
+            return  pattern.attribute == p.attribute 
+              && pattern.identifier == p.identifier 
+              && pattern.value == p.value ? true : false;
+          });    
+          // 在最大串里找不到的模式将会创建join节点; 
+          result == undefined ? nodesOfWillCreateJoinNode.push(e) : undefined;
+        }
+        let preBetaMemoryNode: BetaMemory | undefined;
+        while (nodesOfWillCreateJoinNode.length > 0) {
+          const aM = nodesOfWillCreateJoinNode.shift();
+          let jNode: JoinNode;
+          if (aM != undefined) {
+            jNode = new JoinNode(aM);
+            aM.children.push(jNode);
+            jNode.leftInput = preBetaMemoryNode != undefined ? preBetaMemoryNode : maxMatchTokensNode;
+            jNode.leftInput.children.push(jNode);
+            // 已经空了，那就是最后一个模式已经建立好Join节点了
+            // 将规则的RHS作为该joinNode的子节点
+            if (nodesOfWillCreateJoinNode.length == 0) {
+              jNode.children[0] = new EndNode(jNode, rule.RHS);
+            }
+            else {
+              // 创建新的betaMemory
+              const aNode = <AlphaNode>aM.parent;
+              jNode.children[0] = new BetaMemory(jNode, maxMatchTokensNode.tokens.add(<Pattern>aNode.pattern));
+              preBetaMemoryNode = <BetaMemory>jNode.children[0];
+            }
+          }
+        }
+      // }  
     });
   }
 
@@ -135,7 +157,7 @@ class Rete {
       //DFS 遍历
       node.children.forEach(e => {
         traverse(e);
-      });
+      });    
     }
     traverse(this.reteRoot);
   }

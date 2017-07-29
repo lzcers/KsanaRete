@@ -74,7 +74,6 @@ class TypeNode extends ReteNode {
 }
 
 class JoinNode extends ReteNode {
-
   leftInput: BetaMemory;
   rightInput: AlphaMemory;
 
@@ -89,14 +88,23 @@ class JoinNode extends ReteNode {
   }
 }
 
+class EndNode extends ReteNode {
+  RHS: Function;
+  constructor(p: JoinNode, f: Function) {
+    super('EndNode', p);
+    this.RHS = f;
+  }
+}
+
 class BetaMemory extends ReteNode {
-  tokens: Set<Pattern> | null;
+  tokens: Set<Pattern>;
   items: Array<WME>;
   insertWME(w: WME) {
     this.items.push(w);
   }
-  constructor() {
-    super('BetaMemory', null);
+  constructor(jNode: JoinNode | null, tokens: Set<Pattern> | null) {
+    super('BetaMemory', jNode);
+    this.tokens = tokens== null ? new Set() : tokens;
   }
 }
 function alphaMemoryActivation(AM: AlphaMemory, w: WME) {
@@ -109,4 +117,4 @@ function betaMemoryLeftActivation(node: BetaMemory, t: Token, w: WME) {
 
 }
 
-export { Pattern, Rule, ReteNode, TypeNode, RootNode, AlphaNode, JoinNode, AlphaMemory, BetaMemory };
+export { Pattern, Rule, ReteNode, TypeNode, RootNode, AlphaNode, JoinNode, AlphaMemory, BetaMemory, EndNode };
