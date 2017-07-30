@@ -8,20 +8,21 @@ let testRules: Array<Rule> = [
     }
   },
   {
-    LHS: [{identifier: "b", attribute: "age", value: "16"}, {identifier: "a", attribute: "sex", value: "woman"}],
+    LHS: [{identifier: "a", attribute: "age", value: "20"}, {identifier: "a", attribute: "sex", value: "woman"}],
     RHS: function() {
-      console.log('r3');
+      console.log('r2');
     }
   },
   {
-    LHS: [{identifier: "b", attribute: "age", value: "18"}, {identifier: "a", attribute: "sex", value: "woman"}],
+    LHS: [{identifier: "a", attribute: "sex", value: "woman"}, {identifier: "a", attribute: "age", value: "20"},  {identifier: "a", attribute: "age", value: "6"}],
     RHS: function() {
-      console.log('r2');
+      console.log('r3');
     }
   }
 ]
 
 const rete = new Rete(testRules);
-console.log(rete);
-rete.traverseRete();
+rete.addFact({identifier: "a", attribute: "age", value: "20"});
+// console.log(rete);
+// rete.traverseRete();
 debugger;

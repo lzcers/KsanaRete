@@ -31,6 +31,7 @@ class ReteNode {
     this.type = type;
     this.parent = parent;
     this.id = uniqueId();
+    console.log(this.id +" "+ this.type);
   }
 }
 interface ReteNodeHashTable {
@@ -41,6 +42,10 @@ class RootNode extends ReteNode {
   typeNodeHashTable: {[index: string]: ReteNode} = {};
   constructor() {
     super('RootNode', null);
+  }
+  addFact(e: WME) {
+    const typeNode: TypeNode = <TypeNode>this.typeNodeHashTable[e.attribute];
+    typeNode != undefined ? typeNode.activation(e) : undefined;
   }
 }
 
@@ -55,21 +60,39 @@ class AlphaNode extends ReteNode {
             && p.identifier == this.pattern.identifier 
             && p.value == this.pattern.value ? true : false;
   }
+  constantCheck(e: WME) {
+    const checkResult = e.value ==  this.pattern.value ? true : false;
+    if (checkResult) {
+      console.log(`(${e.identifier}, ${e.attribute}, ${e.value})通过模式(${this.pattern.identifier}, ${this.pattern.attribute}, ${this.pattern.value})的常量检查`);
+      const AM = <AlphaMemory>this.children[0];
+      AM.activation(e);
+    } 
+    return checkResult;
+  }
+  activation(e: WME) {
+    return this.constantCheck(e);
+  }
 }
 
 class AlphaMemory extends ReteNode {
-  items: Array<WME>;
+  items: Array<WME> = [];
   insertWME(w: WME) {
     this.items.push(w);
   }
   constructor(parent: AlphaNode) {
     super('AlphaMemory', parent);
   }
+  activation(e: WME) {
+    this.items.push(e);
+  }
 }
 
 class TypeNode extends ReteNode {
   constructor(parent: ReteNode) {
     super("TypeNode", parent);
+  }
+  activation(e: WME) {
+    this.children.find((i: AlphaNode) => i.activation(e));
   }
 }
 
@@ -117,4 +140,4 @@ function betaMemoryLeftActivation(node: BetaMemory, t: Token, w: WME) {
 
 }
 
-export { Pattern, Rule, ReteNode, TypeNode, RootNode, AlphaNode, JoinNode, AlphaMemory, BetaMemory, EndNode };
+export { Pattern, Rule, ReteNode, TypeNode, RootNode, AlphaNode, JoinNode, AlphaMemory, BetaMemory, EndNode, WME };
