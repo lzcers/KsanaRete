@@ -2,7 +2,7 @@ import { Rule, Rete } from './rete';
  
 let testRules: Array<Rule> = [
   {
-    LHS: [{identifier: "a", attribute: "age", value: "20"}, {identifier: "a", attribute: "sex", value: "man"}],
+    LHS: [{identifier: "<a>", attribute: "age", value: "20"}, {identifier: "a", attribute: "sex", value: "man"}],
     RHS: function() {
       console.log('r1');
     }

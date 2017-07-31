@@ -1,11 +1,13 @@
 import { uniqueId } from 'lodash';
 interface WME {
+  [index: string]: string;
   identifier: string;
   attribute: string;
   value: string;
 }
 
 interface Pattern {
+  [index: string]: string;
   identifier: string;
   attribute: string;
   value: string;
@@ -60,8 +62,19 @@ class AlphaNode extends ReteNode {
             && p.identifier == this.pattern.identifier 
             && p.value == this.pattern.value ? true : false;
   }
+
   constantCheck(e: WME) {
-    const checkResult = e.value ==  this.pattern.value ? true : false;
+      // 找出模式里的每一项常量，然后做测试
+    const varRegexp =/^<(.*)>$/;
+    let checkResult = true;
+    for (let i in this.pattern) {
+      const patternValue: string = this.pattern[i];
+      if (varRegexp.test(patternValue) == false) {
+        checkResult = e[i] == patternValue ? true : false;
+        // 一旦有一项常量检测未通过，则直接alpha节点测试不通过
+        if (!checkResult) break;
+      }
+    }
     if (checkResult) {
       console.log(`(${e.identifier}, ${e.attribute}, ${e.value})通过模式(${this.pattern.identifier}, ${this.pattern.attribute}, ${this.pattern.value})的常量检查`);
       const AM = <AlphaMemory>this.children[0];
@@ -75,15 +88,18 @@ class AlphaNode extends ReteNode {
 }
 
 class AlphaMemory extends ReteNode {
-  items: Array<WME> = [];
-  insertWME(w: WME) {
-    this.items.push(w);
-  }
+  items: {[index: string]: any;} = {};
   constructor(parent: AlphaNode) {
     super('AlphaMemory', parent);
   }
+  insertFact(e: WME) {
+    const attribute = e.attribute;
+    const value = e.value;
+    this.items[e.identifier] = {[attribute]: value};
+  }
   activation(e: WME) {
-    this.items.push(e);
+    this.insertFact(e);
+    this.children.forEach((joinNode: JoinNode) => joinNode.rightActivation(e));
   }
 }
 
@@ -92,7 +108,7 @@ class TypeNode extends ReteNode {
     super("TypeNode", parent);
   }
   activation(e: WME) {
-    this.children.find((i: AlphaNode) => i.activation(e));
+    this.children.forEach((i: AlphaNode) => i.activation(e));
   }
 }
 
@@ -108,6 +124,7 @@ class JoinNode extends ReteNode {
 
   }
   rightActivation(w: WME) {
+    console.log('test');
   }
 }
 
@@ -129,15 +146,6 @@ class BetaMemory extends ReteNode {
     super('BetaMemory', jNode);
     this.tokens = tokens== null ? new Set() : tokens;
   }
-}
-function alphaMemoryActivation(AM: AlphaMemory, w: WME) {
-  AM.insertWME(w);
-  AM.children.forEach((node: JoinNode) => {
-    node.rightActivation(w);
-  })
-}
-function betaMemoryLeftActivation(node: BetaMemory, t: Token, w: WME) {
-
 }
 
 export { Pattern, Rule, ReteNode, TypeNode, RootNode, AlphaNode, JoinNode, AlphaMemory, BetaMemory, EndNode, WME };
