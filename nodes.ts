@@ -78,7 +78,7 @@ class AlphaNode extends ReteNode {
     if (checkResult) {
       console.log(`(${e.identifier}, ${e.attribute}, ${e.value})通过模式(${this.pattern.identifier}, ${this.pattern.attribute}, ${this.pattern.value})的常量检查`);
       const AM = <AlphaMemory>this.children[0];
-      AM.activation(e);
+      AM.activation(e, this.pattern);
     } 
     return checkResult;
   }
@@ -97,9 +97,9 @@ class AlphaMemory extends ReteNode {
     const value = e.value;
     this.items[e.identifier] = {[attribute]: value};
   }
-  activation(e: WME) {
+  activation(e: WME, p: Pattern) {
     this.insertFact(e);
-    this.children.forEach((joinNode: JoinNode) => joinNode.rightActivation(e));
+    this.children.forEach((joinNode: JoinNode) => joinNode.activation(e, p));
   }
 }
 
@@ -120,11 +120,27 @@ class JoinNode extends ReteNode {
     super("JoinNode", parent);
     this.rightInput = parent;
   }
-  leftActivation(w: WME) {
-
+  checkPatternVar(p: Pattern, v: string) {
+    return p.identifier == v || p.attribute == v || p.value == v;
   }
-  rightActivation(w: WME) {
-    console.log('test');
+  activation(e: WME, p: Pattern) {
+    let arrTokens = [...this.leftInput.tokens];
+    const varRegexp =/^<(.*)>$/;
+    const childNode = this.children[0];
+    const varDict = Object.keys(p).reduce((pre: any, cur: string) => {
+      if (varRegexp.test(p[cur])) {
+        pre[cur]= p[cur];
+      }
+      return pre;
+    }, {});
+
+    // todo JOIN算法
+    Object.keys(varDict).filter((v: string) => {
+      // 从leftInput中找到与rightInput规则有变量交集的规则
+      let includesVarParttern =  arrTokens.filter(p => {
+        return this.checkPatternVar(p, varDict[v]);
+      })
+    })
   }
 }
 
@@ -138,8 +154,8 @@ class EndNode extends ReteNode {
 
 class BetaMemory extends ReteNode {
   tokens: Set<Pattern>;
-  items: Array<WME>;
-  insertWME(w: WME) {
+  items: Array<Array<WME>>;
+  insertWME(w: Array<WME>) {
     this.items.push(w);
   }
   constructor(jNode: JoinNode | null, tokens: Set<Pattern> | null) {
