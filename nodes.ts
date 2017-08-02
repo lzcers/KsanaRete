@@ -7,7 +7,8 @@ interface WME {
 }
 
 interface Pattern {
-  [index: string]: string;
+  [index: string]: string|undefined;
+  pid?: string;
   identifier: string;
   attribute: string;
   value: string;
@@ -56,6 +57,7 @@ class AlphaNode extends ReteNode {
   constructor(parent: ReteNode, pattern: Pattern) {
     super('AlphaNode', parent);
     this.pattern = pattern;
+    this.pattern.pid = uniqueId('p');
   }
   patternMatch(p: Pattern) {
     return  p.attribute == this.pattern.attribute 
@@ -68,7 +70,7 @@ class AlphaNode extends ReteNode {
     const varRegexp =/^<(.*)>$/;
     let checkResult = true;
     for (let i in this.pattern) {
-      const patternValue: string = this.pattern[i];
+      const patternValue: string = this.pattern[i] || "";
       if (varRegexp.test(patternValue) == false) {
         checkResult = e[i] == patternValue ? true : false;
         // 一旦有一项常量检测未通过，则直接alpha节点测试不通过
@@ -88,14 +90,12 @@ class AlphaNode extends ReteNode {
 }
 
 class AlphaMemory extends ReteNode {
-  items: {[index: string]: any;} = {};
+  items: Array<WME> = [];
   constructor(parent: AlphaNode) {
     super('AlphaMemory', parent);
   }
   insertFact(e: WME) {
-    const attribute = e.attribute;
-    const value = e.value;
-    this.items[e.identifier] = {[attribute]: value};
+    this.items.push(e);
   }
   activation(e: WME, p: Pattern) {
     this.insertFact(e);
@@ -123,23 +123,58 @@ class JoinNode extends ReteNode {
   checkPatternVar(p: Pattern, v: string) {
     return p.identifier == v || p.attribute == v || p.value == v;
   }
+  // return {varName: bindValue}
+  patternInstantiation(varDict: any, w: WME) {
+    Object.keys(varDict).reduce((pre: any, cur) => {
+      let varName = varDict[cur];
+      pre[varName] = w[cur];
+      return pre;
+    }, {})
+    return varDict
+  }
+
   activation(e: WME, p: Pattern) {
     let arrTokens = [...this.leftInput.tokens];
+    let leftItems = this.leftInput.items;
+    let rightItems = this.rightInput.items;
+    let pidLinkPattern = arrTokens.reduce((pre: any, cur) => {
+      if(cur.pid != undefined) {
+        pre[cur.pid] = cur;
+      }
+      return pre;
+    }, {})
+
     const varRegexp =/^<(.*)>$/;
     const childNode = this.children[0];
     const varDict = Object.keys(p).reduce((pre: any, cur: string) => {
-      if (varRegexp.test(p[cur])) {
-        pre[cur]= p[cur];
+        if (varRegexp.test(<string>p[cur])) {
+          pre[cur]= p[cur];
       }
       return pre;
     }, {});
+    // 找出所有含有变量的Pattern
+    let includesVarParttern =  arrTokens.filter(p => varRegexp.test(p.identifier) || varRegexp.test(p.attribute) || varRegexp.test(p.value));
+    // let varLinkPattern = 
+    // todo JOIN操作
+    // Object.keys(varDict).filter((v: string) => {
+    //   includesVarParttern.forEach(p => {
+    //     // 当前的Pattern里有该变量
+    //     if (this.checkPatternVar(p, varDict[v])) {
+    //       // 取出WME实例化该模式，绑定上变量；
+    //       rightItems.forEach(i => i[v])
+    //     }
+    //   })
+    // })
+    // 拉出一组匹配的WME
+    // [{pid: WME, ...}]
 
-    // todo JOIN算法
-    Object.keys(varDict).filter((v: string) => {
-      // 从leftInput中找到与rightInput规则有变量交集的规则
-      let includesVarParttern =  arrTokens.filter(p => {
-        return this.checkPatternVar(p, varDict[v]);
-      })
+    rightItems.forEach(i => {
+      let InstantiationPattern =  this.patternInstantiation(varDict, i);
+
+      // Object.keys(i).forEach(pid => {
+      //   // 模式实例化
+      //   checkPatternVar(pidLinkPattern[pid], )
+      // })
     })
   }
 }
@@ -154,8 +189,8 @@ class EndNode extends ReteNode {
 
 class BetaMemory extends ReteNode {
   tokens: Set<Pattern>;
-  items: Array<Array<WME>>;
-  insertWME(w: Array<WME>) {
+  items: Array<{[idex: string]: WME}>;
+  insertWME(w:{[idex: string]: WME}) {
     this.items.push(w);
   }
   constructor(jNode: JoinNode | null, tokens: Set<Pattern> | null) {
