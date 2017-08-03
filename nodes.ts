@@ -120,23 +120,47 @@ class JoinNode extends ReteNode {
     super("JoinNode", parent);
     this.rightInput = parent;
   }
+  // return example: 
+  // { <X>: "attribute", ...}
+  getPatternVar(p: Pattern) {
+    const varRegexp =/^<(.*)>$/;
+      Object.keys(p).reduce((pre: any, cur) => {
+          const varName = p[cur] || "";
+          varRegexp.test(varName) ? pre[varName] = cur : pre;
+        return pre;
+      }, {});
+  }
   checkPatternVar(p: Pattern, v: string) {
     return p.identifier == v || p.attribute == v || p.value == v;
   }
-  // return {varName: bindValue}
+  // return {<varName>: <bindValue>}
   patternInstantiation(varDict: any, w: WME) {
     Object.keys(varDict).reduce((pre: any, cur) => {
-      let varName = varDict[cur];
-      pre[varName] = w[cur];
+      pre[cur] =  w[varDict[cur]];
       return pre;
     }, {})
     return varDict
   }
+  // 返回true 意味着右侧中出现的形参与左侧与之对应的形参其实参相等；
+  // 若是左侧模式中没有找到对应的形参则这两条模式是无关联的，可直接join;
+  compareTwoPatternActualParam(rp: any, lp: any) {
+    let flag = true;
+    Object.keys(rp).forEach(e => {
+      // 右侧中的形参在左侧模式中出现则必须实参相等，否则这组WME就Join失败
+      // 若是右侧中的形参在左侧模式中没有出现，那就可以join
+      if(lp[e] != undefined) {
+        rp[e] == lp[e] ? flag = true : flag = false;
+      }
+    })
+    return flag;
+  }
 
   activation(e: WME, p: Pattern) {
+    let pid = p.pid || ""; // 怎么可能为undefined
     let arrTokens = [...this.leftInput.tokens];
-    let leftItems = this.leftInput.items;
-    let rightItems = this.rightInput.items;
+    let leftItems = [...this.leftInput.items];
+    let rightItems = [...this.rightInput.items];
+
     let pidLinkPattern = arrTokens.reduce((pre: any, cur) => {
       if(cur.pid != undefined) {
         pre[cur.pid] = cur;
@@ -146,35 +170,53 @@ class JoinNode extends ReteNode {
 
     const varRegexp =/^<(.*)>$/;
     const childNode = this.children[0];
-    const varDict = Object.keys(p).reduce((pre: any, cur: string) => {
-        if (varRegexp.test(<string>p[cur])) {
-          pre[cur]= p[cur];
+    const varDict = this.getPatternVar(p);
+    // 找出所有含有变量的Pattern, 并获得所有模式的变量所对应的属性
+    // return example:
+    // {
+    //   <pid>: {
+    //     <varName>: <bindAttr>
+    //   }
+    // }
+    let includesVarParttern =  arrTokens.filter(p => {
+      varRegexp.test(p.identifier) 
+      || varRegexp.test(p.attribute) 
+      || varRegexp.test(p.value)
+    }).reduce((pre: any, cur) => {
+      const pid = cur.pid;
+      if (pid != undefined) {
+        pre[pid] = this.getPatternVar(p);
       }
       return pre;
     }, {});
-    // 找出所有含有变量的Pattern
-    let includesVarParttern =  arrTokens.filter(p => varRegexp.test(p.identifier) || varRegexp.test(p.attribute) || varRegexp.test(p.value));
-    // let varLinkPattern = 
-    // todo JOIN操作
-    // Object.keys(varDict).filter((v: string) => {
-    //   includesVarParttern.forEach(p => {
-    //     // 当前的Pattern里有该变量
-    //     if (this.checkPatternVar(p, varDict[v])) {
-    //       // 取出WME实例化该模式，绑定上变量；
-    //       rightItems.forEach(i => i[v])
-    //     }
-    //   })
-    // })
-    // 拉出一组匹配的WME
-    // [{pid: WME, ...}]
-
+    // join操作，从leftInput, rightInput中取WME开始JOIN操作
     rightItems.forEach(i => {
-      let InstantiationPattern =  this.patternInstantiation(varDict, i);
-
-      // Object.keys(i).forEach(pid => {
-      //   // 模式实例化
-      //   checkPatternVar(pidLinkPattern[pid], )
-      // })
+      // 取一个WME实例化一个模式，得到模式中每个变量绑定的实参
+      let rightPatternInstantiation =  this.patternInstantiation(varDict, i);
+      // 遍历leftInput, 实例化右侧token里的每一个模式与rightPatternInstantiation比对
+      for (let l of leftItems) {
+        // 拿到一个items, 拿到里面每一条WME
+        let wholeMatchFlag = true;
+        itemMatch: for (let w in l) {
+          // 判断下这个模式里有没有变量， includesVarParttern中已经过滤出所有含有变量的模式了
+          if (includesVarParttern[w] != undefined) {
+            const wme  = l[w];
+            // 实例化这条模式
+            const leftActualParam = this.patternInstantiation(includesVarParttern[w], wme);
+            const result = this.compareTwoPatternActualParam(rightPatternInstantiation, leftActualParam);
+            if (result) {
+              wholeMatchFlag = true;
+              continue;
+            } else {
+            // 如果当前WME实参不一致，则整个item跳过;    
+              wholeMatchFlag = false;
+              break itemMatch;
+            }
+          }
+        }
+        // tokens里面的全部匹配了？那就把当前从rightInput取出的WME与leftInput中的Items做JOIN操作，作为JoinNode的下一节点的输入
+        let newItem = {...l, [pid]: i};
+      }
     })
   }
 }
