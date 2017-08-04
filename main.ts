@@ -23,6 +23,8 @@ let testRules: Array<Rule> = [
 
 const rete = new Rete(testRules);
 rete.addFact({identifier: "a", attribute: "age", value: "20"});
+rete.addFact({identifier: "a", attribute: "sex", value: "woman"});
+rete.addFact({identifier: "a", attribute: "age", value: "6"});
+rete.addFact({identifier: "a", attribute: "sex", value: "man"});
 // console.log(rete);
 // rete.traverseRete();
-debugger;
