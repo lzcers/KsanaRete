@@ -95,7 +95,7 @@ class Rete {
         const jNodes = <Array<JoinNode>>e.children;
         for (const j of jNodes) {
           // 如果该alphaMemory链接的JoinNode其左输入的tokens比当前的rulePatternSet大，就跳过了。
-          // 因为意味着，假设当前规则的模式为c1&&c2&&c3, tokens.size为3， 而匹配的leftInputNode的模式数量比当前规则多，
+          // 因为这意味着，假设当前规则的模式为c1&&c2&&c3, tokens.size为3， 而匹配的leftInputNode的模式数量比当前规则多，
           // 则该leftInputNode显然不能复用
           // 进行子集检查，看是否能否复用
           

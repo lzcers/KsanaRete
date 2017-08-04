@@ -201,11 +201,13 @@ class JoinNode extends ReteNode {
                     if (this.children[0].type == "BetaMemory") {
                         const successor = this.children[0];
                         successor.items.push(Object.assign({}, l, { [pid]: i }));
+                        console.log(Object.keys(Object.assign({}, l, { [pid]: i })).toString() + `模式部分匹配，激活BetaMemory节点！`);
                         successor.activation();
                     }
                     else if (this.children[0].type == "EndNode") {
                         const successor = this.children[0];
                         // 执行RHS
+                        console.log(Object.keys(Object.assign({}, l, { [pid]: i })).toString() + `模式全匹配，下一节点为EndNode，执行其RHS！`);
                         successor.activation();
                     }
                 }
@@ -289,11 +291,13 @@ class JoinNode extends ReteNode {
                 if (this.children[0].type == "BetaMemory") {
                     const successor = this.children[0];
                     successor.items.push(Object.assign({}, l, { [pid]: e }));
+                    console.log(Object.keys(Object.assign({}, l, { [pid]: e })).toString() + `模式部分匹配，激活下一节点BetaMemory`);
                     successor.activation();
                 }
                 else if (this.children[0].type == "EndNode") {
                     const successor = this.children[0];
                     // 执行RHS
+                    console.log(Object.keys(Object.assign({}, l, { [pid]: e })).toString() + `模式全匹配，下一节点为EndNode，执行其RHS！`);
                     successor.activation();
                 }
             }
