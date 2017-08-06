@@ -14,47 +14,39 @@ interface Pattern {
   value: string;
 }
 
-interface Token {
-  parent: Token;  
-  wme: WME;
-}
-
 interface Rule {
   LHS: Array<Pattern>;
   RHS: () => void;
 }
 
 
-class ReteNode {
+abstract class ReteNode<T, U> {
   id: string;
   type: string;
-  children: Array<ReteNode> = [];
-  parent: ReteNode | null;
-  constructor(type: string, parent: ReteNode | null) {
+  children: Array<T> = [];
+  parent: U | null;
+  constructor(type: string, parent: U | null) {
     this.type = type;
     this.parent = parent;
     this.id = uniqueId();
     console.log(this.id +" "+ this.type);
   }
 }
-interface ReteNodeHashTable {
-   [index: string]: ReteNode;
-};
 
-class RootNode extends ReteNode {
-  typeNodeHashTable: {[index: string]: ReteNode} = {};
+class RootNode extends ReteNode<TypeNode, null> {
+  private typeNodeHashTable: {[index: string]: TypeNode }= {};
   constructor() {
     super('RootNode', null);
   }
   addFact(e: WME) {
-    const typeNode: TypeNode = <TypeNode>this.typeNodeHashTable[e.attribute];
+    const typeNode = this.typeNodeHashTable[e.attribute];
     typeNode != undefined ? typeNode.activation(e) : undefined;
   }
 }
 
-class AlphaNode extends ReteNode {
+class AlphaNode extends ReteNode<AlphaMemory, TypeNode> {
   pattern: Pattern;
-  constructor(parent: ReteNode, pattern: Pattern) {
+  constructor(parent: TypeNode, pattern: Pattern) {
     super('AlphaNode', parent);
     this.pattern = pattern;
     Object.defineProperty(pattern, "pid", { value :  uniqueId('p'), enumerable: false});
@@ -89,7 +81,7 @@ class AlphaNode extends ReteNode {
   }
 }
 
-class AlphaMemory extends ReteNode {
+class AlphaMemory extends ReteNode<JoinNode, AlphaNode> {
   items: Array<WME> = [];
   constructor(parent: AlphaNode) {
     super('AlphaMemory', parent);
@@ -103,16 +95,16 @@ class AlphaMemory extends ReteNode {
   }
 }
 
-class TypeNode extends ReteNode {
-  constructor(parent: ReteNode) {
+class TypeNode extends ReteNode<AlphaNode, RootNode> {
+  constructor(parent: RootNode) {
     super("TypeNode", parent);
   }
   activation(e: WME) {
-    this.children.forEach((i: AlphaNode) => i.activation(e));
+    this.children.forEach(i => i.activation(e));
   }
 }
 
-class JoinNode extends ReteNode {
+class JoinNode extends ReteNode<EndNode | BetaMemory, AlphaMemory> {
   leftInput: BetaMemory;
   rightInput: AlphaMemory;
 
@@ -335,7 +327,7 @@ class JoinNode extends ReteNode {
   }
 }
 
-class EndNode extends ReteNode {
+class EndNode extends ReteNode<null, JoinNode> {
   RHS: Function;
   constructor(p: JoinNode, f: Function) {
     super('EndNode', p);
@@ -346,7 +338,7 @@ class EndNode extends ReteNode {
   }
 }
 
-class BetaMemory extends ReteNode {
+class BetaMemory extends ReteNode<JoinNode, JoinNode | null> {
   tokens: Set<Pattern>;
   items: Array<{[idex: string]: WME}> = [];
   insertWME(w:{[idex: string]: WME}) {

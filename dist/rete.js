@@ -175,9 +175,7 @@ class Rete {
         let tempStack = [];
         function traverse(node) {
             console.log(`${node.id} is ${node.type}`);
-            node.children.forEach(e => {
-                traverse(e);
-            });
+            node.children.forEach((e) => traverse(e));
         }
         traverse(this.reteRoot);
     }

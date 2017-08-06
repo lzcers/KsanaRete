@@ -78,7 +78,7 @@ class TypeNode extends ReteNode {
         super("TypeNode", parent);
     }
     activation(e) {
-        this.children.forEach((i) => i.activation(e));
+        this.children.forEach(i => i.activation(e));
     }
 }
 exports.TypeNode = TypeNode;
