@@ -34,7 +34,7 @@ abstract class ReteNode<T, U> {
 }
 
 class RootNode extends ReteNode<TypeNode, null> {
-  private typeNodeHashTable: {[index: string]: TypeNode }= {};
+  public typeNodeHashTable: {[index: string]: TypeNode }= {};
   constructor() {
     super('RootNode', null);
   }
@@ -145,6 +145,28 @@ class JoinNode extends ReteNode<EndNode | BetaMemory, AlphaMemory> {
     })
     return flag;
   }
+
+  // 找出所有含有变量的Pattern, 并获得所有模式的变量所对应的属性
+  // return example:
+  // {
+  //   <pid>: {
+  //     <varName>: <bindAttr>
+  //   }
+  // }
+  includesVarParttern() {
+      const varRegexp =/^<(.*)>$/;
+      return [...this.leftInput.tokens].filter(p => {
+      varRegexp.test(p.identifier) 
+      || varRegexp.test(p.attribute) 
+      || varRegexp.test(p.value)
+    }).reduce((pre: any, cur) => {
+      const pid = cur.pid;
+      if (pid != undefined) {
+        pre[pid] = this.getPatternVar(cur);
+      }
+      return pre;
+    }, {});
+  }
   leftActivation() {
     const AN = <AlphaNode>this.rightInput.parent;
     let p = AN.pattern;
@@ -152,12 +174,6 @@ class JoinNode extends ReteNode<EndNode | BetaMemory, AlphaMemory> {
     let arrTokens = [...this.leftInput.tokens];
     let leftItems = [...this.leftInput.items];
     let rightItems = [...this.rightInput.items];
-    let pidLinkPattern = arrTokens.reduce((pre: any, cur) => {
-      if(cur.pid != undefined) {
-        pre[cur.pid] = cur;
-      }
-      return pre;
-    }, {})
 
     const varRegexp =/^<(.*)>$/;
     const childNode = this.children[0];
@@ -169,17 +185,7 @@ class JoinNode extends ReteNode<EndNode | BetaMemory, AlphaMemory> {
     //     <varName>: <bindAttr>
     //   }
     // }
-    let includesVarParttern =  arrTokens.filter(p => {
-      varRegexp.test(p.identifier) 
-      || varRegexp.test(p.attribute) 
-      || varRegexp.test(p.value)
-    }).reduce((pre: any, cur) => {
-      const pid = cur.pid;
-      if (pid != undefined) {
-        pre[pid] = this.getPatternVar(p);
-      }
-      return pre;
-    }, {});
+    let includesVarParttern =  this.includesVarParttern();
     // join操作，从leftInput, rightInput中取WME开始JOIN操作
     for (let i of rightItems) {
       // 取一个WME实例化一个模式，得到模式中每个变量绑定的实参
@@ -242,34 +248,11 @@ class JoinNode extends ReteNode<EndNode | BetaMemory, AlphaMemory> {
     let arrTokens = [...this.leftInput.tokens];
     let leftItems = [...this.leftInput.items];
     let rightItems = [...this.rightInput.items];
-    let pidLinkPattern = arrTokens.reduce((pre: any, cur) => {
-      if(cur.pid != undefined) {
-        pre[cur.pid] = cur;
-      }
-      return pre;
-    }, {})
 
     const varRegexp =/^<(.*)>$/;
     const childNode = this.children[0];
     const varDict = this.getPatternVar(p);
-    // 找出所有含有变量的Pattern, 并获得所有模式的变量所对应的属性
-    // return example:
-    // {
-    //   <pid>: {
-    //     <varName>: <bindAttr>
-    //   }
-    // }
-    let includesVarParttern =  arrTokens.filter(p => {
-      varRegexp.test(p.identifier) 
-      || varRegexp.test(p.attribute) 
-      || varRegexp.test(p.value)
-    }).reduce((pre: any, cur) => {
-      const pid = cur.pid;
-      if (pid != undefined) {
-        pre[pid] = this.getPatternVar(p);
-      }
-      return pre;
-    }, {});
+    let includesVarParttern =  this.includesVarParttern();
     // join操作，从leftInput, rightInput中取WME开始JOIN操作
       // 取一个WME实例化一个模式，得到模式中每个变量绑定的实参
       let rightPatternInstantiation =  this.patternInstantiation(varDict, e);
