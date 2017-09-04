@@ -129,7 +129,7 @@ class JoinNode extends ReteNode {
     includesVarParttern() {
         const varRegexp = /^<(.*)>$/;
         return [...this.leftInput.tokens].filter(p => {
-            varRegexp.test(p.identifier)
+            return varRegexp.test(p.identifier)
                 || varRegexp.test(p.attribute)
                 || varRegexp.test(p.value);
         }).reduce((pre, cur) => {
@@ -168,6 +168,7 @@ class JoinNode extends ReteNode {
         //   }
         // }
         let includesVarParttern = this.includesVarParttern();
+        console.log(includesVarParttern);
         // join操作，从leftInput, rightInput中取WME开始JOIN操作
         for (let i of rightItems) {
             // 取一个WME实例化一个模式，得到模式中每个变量绑定的实参
