@@ -1,3 +1,3 @@
 # KsanaRete
 
-基于 Rete 算法的 TypeScript 实现
+规则引擎的核心 rete 算法的 TypeScript 实现。
